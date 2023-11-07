@@ -1,0 +1,72 @@
+name: onlyLandmark
+model:
+  base_learning_rate: 2.0e-06
+  target: ldm.models.diffusion.ddpm.LatentDiffusion
+  params:
+    linear_start: 0.0015
+    linear_end: 0.0195
+    num_timesteps_cond: 1
+    log_every_t: 200
+    timesteps: 1000
+    first_stage_key: image
+    cond_stage_key: landmarks
+    image_size: 512
+    channels: 1
+    cond_stage_trainable: true
+    concat_mode: false
+    conditioning_key: crossattn
+    monitor: val/loss_simple_ema
+    unet_config:
+      target: ldm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        image_size: 512
+        in_channels: 1
+        out_channels: 1
+        model_channels: 16
+        attention_resolutions:
+        - 4
+        - 2
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 4
+        num_head_channels: 16
+        use_spatial_transformer: true
+        transformer_depth: 1
+        context_dim: 512
+    first_stage_config:
+      target: ldm.models.autoencoder.IdentityFirstStage
+      params:
+        lossconfig:
+          target: torch.nn.Identity
+    cond_stage_config:
+      target: ldm.modules.encoders.modules.LandmarkEmbedder
+      params:
+        n_embed: 512
+        n_layer: 16
+        vocab_size: 8192
+        max_seq_len: 92
+        use_tokenizer: true
+        image_size: 512
+        grid_size: 512
+        
+
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 1
+    num_workers: 8
+    wrap: true
+    train:
+      target: ldm.data.dental2_stage2_no_stage1.Dataset_Landmark_Train
+      params:
+        train_size:
+        - 512
+        - 512
+    validation:
+      target: ldm.data.dental2_stage2_no_stage1.Dataset_Landmark_Valid
+      params:
+        train_size:
+        - 512
+        - 512

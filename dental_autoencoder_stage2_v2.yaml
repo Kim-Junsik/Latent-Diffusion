@@ -1,0 +1,107 @@
+name: onlyLandmark
+model:
+  base_learning_rate: 2.0e-06
+  target: ldm.models.diffusion.ddpm.Landmark2ImgDiffusion
+  params:
+    linear_start: 0.0015
+    linear_end: 0.0195
+    num_timesteps_cond: 1
+    log_every_t: 200
+    timesteps: 1000
+    first_stage_key: image
+    cond_stage_key: landmark
+    image_size: 32
+    channels: 16
+    cond_stage_trainable: true
+    concat_mode: false
+    conditioning_key: crossattn
+    monitor: val/loss_simple_ema
+    unet_config:
+      target: ldm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        image_size: 32
+        in_channels: 16
+        out_channels: 16
+        model_channels: 32
+        attention_resolutions:
+        - 8
+        - 4
+        - 2
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 3
+        - 5
+        num_head_channels: 32
+        use_spatial_transformer: true
+        transformer_depth: 1
+        context_dim: 640
+    first_stage_config:
+      target: ldm.models.autoencoder.VQModelInterface
+      params:
+#         ckpt_path: /workspace/jjh/25.CephGeneration/latent-diffusion/logs/2022-12-07T08-03-56_dental_autoencoder/checkpoints/last.ckpt
+        embed_dim: 16
+        n_embed: 4096
+        ddconfig:
+          double_z: false
+          z_channels: 16
+          resolution: 512
+          in_channels: 1
+          out_ch: 1
+          ch: 64
+          ch_mult:
+          - 1
+          - 2
+          - 2
+          - 4
+          - 4
+          num_res_blocks: 2
+          attn_resolutions:
+          - 64
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+    cond_stage_config:
+      target: ldm.modules.encoders.modules.LandmarkEmbedderv2
+      params:
+        args:
+          num_hidden_blocks: 2
+          num_hidden_layers: 1
+          n_node: 48
+          input_dim: 2
+          output_dim: 640
+          hidden_dim:
+          - 64
+          - 32
+          activation: Tanh
+          act_negative: None
+          is_residual: false
+          bn: true
+          atn: false
+          num_head: 1
+          dropout: 0
+          
+          
+          
+        
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 1
+    num_workers: 4
+    wrap: true
+    train:
+      target: ldm.data.dental3.DentalTrainStage2
+      params:
+        data_path: /mnt/nas100/forGPU/changyong/05.Ceph/stylegan2_inversion_lat_png
+        size: 512
+        crop_size: 512
+        image: false
+    validation:
+      target: ldm.data.dental3.DentalValidationStage2
+      params:
+        data_path: /mnt/nas100/forGPU/changyong/05.Ceph/stylegan2_inversion_lat_png
+        size: 512
+        crop_size: 512
+        image: false
